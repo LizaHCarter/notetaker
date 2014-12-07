@@ -2,16 +2,28 @@
   'use strict';
 
   angular.module('hapi-auth')
-  .factory('Note', ['$http', function($http){
+  .factory('Note', ['$http', '$upload', function($http, $upload){
 
-    function create(note){
-      return $http.post('/notes', note);
+    function create(note, files){
+      var noteData = {
+        url: '/notes',
+        method: 'POST',
+        data: note,
+        file: files,
+        fileFormDataName: 'photos'
+      };
+
+      return $upload.upload(noteData);
     }
 
-    function recent(){
-      return $http.get('/notes?limit=10&offset=0');
+    function query(limit, offset, filter){
+      limit = limit || '';
+      offset = offset || '';
+      filter = filter || '';
+
+      return $http.get('/notes?limit='+limit+'&offset='+offset+'&filter='+filter);
     }
 
-    return {create:create, recent:recent};
+    return {create:create, query:query};
   }]);
 })();
