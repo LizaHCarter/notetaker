@@ -1,1 +1,17 @@
-h1 Notes Show
+.row
+  .small-8.columns
+    h4: a(href='', ng-click='backToIndex()') Back To Notes
+    table#notes
+      thead
+      tbody
+        tr
+          td Title:
+          td {{note.title}}
+        tr
+          td Body:
+          td {{note.body}}
+        tr
+          td Tags:
+          td: span.tag(ng-repeat='name in note.tagNames')
+  .small-4.columns
+    .photo(ng-repeat='photo in note.photos', style='background-image:url({{photo}})')

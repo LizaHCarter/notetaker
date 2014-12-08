@@ -7,5 +7,9 @@
         $scope.note = res.data;
       });
 
+      $scope.backToIndex = function(){
+        $state.go('notes.index');
+      };
+
     }]);
 })();
