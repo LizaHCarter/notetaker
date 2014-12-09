@@ -1,17 +1,15 @@
-.row
-  .small-8.columns
-    h4: a(href='', ng-click='backToIndex()') Back To Notes
-    table#notes
-      thead
-      tbody
-        tr
-          td Title:
-          td {{note.title}}
-        tr
-          td Body:
-          td {{note.body}}
-        tr
-          td Tags:
-          td: span.tag(ng-repeat='name in note.tagNames')
-  .small-4.columns
-    .photo(ng-repeat='photo in note.photos', style='background-image:url({{photo}})')
+.panel
+  .panel-body 
+    h1 {{note.title}}
+    h6 DATE
+    h6.subheader {{moment(note.updated_at).format('MM.D.YY @ h:mm a')}}
+    h6 TAGS
+    #tags
+      .tag(ng-repeat='tag in note.tags')
+        a(ui-sref='notes.list({tag:tag})') {{tag}}
+    h6 BODY
+    blockquote {{note.body}}
+    h6 PHOTOS
+    ul.small-block-grid-3
+      li(ng-repeat='url in note.urls')
+        img.th(ng-src='{{url}}')

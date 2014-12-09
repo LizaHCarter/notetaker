@@ -1,30 +1,45 @@
 (function(){
   'use strict';
+
   angular.module('hapi-auth')
-    .controller('NotesIndexCtrl', ['$scope', '$state', 'Note', function($scope, $state, Note){
-      $scope.notes = [];
+  .controller('NotesIndexCtrl', ['$scope', '$state', 'Note', function($scope, $state, Note){
+    $scope.files = [];
+    $scope.count = 0;
+    $scope.pages = 0;
+    $scope._ = _;
 
-      getNotes();
+    Note.query($state.params.tag || '%', $state.params.page * 1 || 0).then(function(response){
+      $scope.notes = response.data.notes;
+    });
 
-      $scope.create = function(note){
-        Note.create(note, $scope.photos).then(function(res){
-          $scope.photos = undefined;
-          $scope.note = {};
-          getNotes();
-        }, function(res){
-          console.log('error adding note', res);
-        });
-      };
-      $scope.viewNote = function(noteId){
-        console.log(noteId);
-        $state.go('notes.show', {noteId:noteId});
-      };
+    Note.count().then(function(response){
+      $scope.total = response.data.count * 1;
+      $scope.pages = Math.ceil($scope.total / 5);
+    });
 
-      function getNotes(limit, offset, filter){
-        Note.query(limit, offset, filter).then(function(res){
-          $scope.notes = res.data;
-        });
+    $scope.nuke = function(note){
+      Note.nuke(note).then(function(response){
+        $state.reload();
+      });
+    };
+
+    $scope.isCurrent = function(page){
+      return page === $state.params.page * 1;
+    };
+
+    $scope.create = function(note){
+      $scope.count = 0;
+      Note.create(note).then(function(response){
+        $scope.note = {};
+        Note.upload(response.data.noteId, $scope.files);
+      });
+    };
+
+    $scope.$on('upload', function(e, count){
+      $scope.count = count;
+      if($scope.count === $scope.files.length){
+        $state.reload();
       }
-    }]);
-
+    });
+  }]);
 })();
