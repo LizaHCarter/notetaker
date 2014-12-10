@@ -13,6 +13,7 @@
     "jquery": "~2.1.1",
     "foundation": "~5.4.7",
     "fontawesome": "~4.2.0",
-    "danialfarid-angular-file-upload": "~2.0.4"
+    "danialfarid-angular-file-upload": "~2.0.4",
+    "moment": "~2.8.4"
   }
 }
