@@ -2,85 +2,62 @@
 
 'use strict';
 
-var path    = require('path'),
-    AWS     = require('aws-sdk'),
-    pg      = require('../postgres/manager'),
-    async   = require('async');
+var pg     = require('../postgres/manager'),
+AWS    = require('aws-sdk'),
+crypto = require('crypto'),
+path   = require('path'),
+concat = require('concat-stream');
 
-function Note(obj){
+function Note(){
 }
 
-Note.create = function(obj, cb){
-  // console.log(obj);
-  // console.log(obj.photos[0].hapi.filename);
+Note.create = function(user, obj, cb){
+  pg.query('select add_note($1, $2, $3, $4)', [user.id, obj.title, obj.body, obj.tags], function(err, results){
+    cb(err, results && results.rows ? results.rows[0].add_note : null);
+  });
+};
 
-  obj.tags = Note.sanitizeTags(obj.tags || '');
+Note.query = function(user, query, cb){
+  pg.query('select * from query_notes($1, $2, $3, $4)', [user.id, query.limit || 10, query.offset || 0, query.tag || '%'], function(err, results){
+    cb(err, results && results.rows ? results.rows : null);
+  });
+};
 
-  pg.query('select add_note($1, $2, $3, $4)', [obj.userId, obj.title, obj.body, obj.tags], function(err, results){
-    if(err || !(results && results.rows)){return cb(err || 'Note failed to add correctly', null);}
-      // console.log(results.rows[0].add_note);
-      var noteId = results.rows[0].add_note;
+Note.show = function(user, noteId, cb){
+  pg.query('select * from show_note($1, $2)', [user.id, noteId], function(err, results){
+    cb(err, results && results.rows ? results.rows[0] : null);
+  });
+};
 
-      if(!obj.photos){return cb(err, noteId);}
+Note.count = function(user, cb){
+  pg.query('select count(*) from notes where user_id = $1', [user.id], function(err, results){
+    cb(err, results && results.rows ? results.rows[0].count : null);
+  });
+};
 
-        if(!Array.isArray(obj.photos)){obj.photos = [obj.photos];}
+Note.nuke = function(user, noteId, cb){
+  pg.query('select nuke_note($1, $2)', [user.id, noteId], function(err, results){
+    cb(err, results && results.rows ? results.rows[0].nuke_note : null);
+  });
+};
 
-          var photos = obj.photos.map(function(obj, i){
-            return {noteId:noteId, photoId:i, stream:obj};
-          });
+Note.upload = function(user, file, name, noteId, cb){
+  var s3   = new AWS.S3();
 
-          async.map(photos, uploadPhotoToS3, function(err, photoUrls){
-            var urlString = photoUrls.join(',');
-            pg.query('SELECT add_photos($1,$2)', [urlString, noteId], function(err, results){
-              cb(err, noteId);
-            });
-          });
-        });
+  crypto.randomBytes(48, function(ex, buf){
+    var hex = buf.toString('hex'),
+    loc = user.token + '/' + noteId + '/' + hex + path.extname(name),
+    url = 'https://s3.amazonaws.com/' + process.env.AWS_BUCKET + '/' + loc;
 
-      };
+    pg.query('insert into photos (url, note_id) values ($1, $2) returning id', [url, noteId], function(err, results){
+      if(err){return cb(err);}
 
-      Note.sanitizeTags = function(s){
-        var tags = s.split(',');
-        tags.forEach(function(t, i){
-          tags[i] = t.trim().toLowerCase();
-        });
-        return tags.join(',');
-      };
+        file.pipe(concat(function(buf){
+          var params = {Bucket: process.env.AWS_BUCKET, Key: loc, Body: buf, ACL: 'public-read'};
+          s3.putObject(params, cb);
+        }));
+      });
+    });
+  };
 
-      Note.query = function(query, cb){
-        console.log(query);
-        query.limit = query.limit || 10;
-        query.offset = query.offset || 0;
-        query.filter = query.filter || '';
-
-        var queryString = 'SELECT * FROM query_notes($1,$2,$3)',
-        queryParams = [query.userId, query.limit, query.offset];
-
-        pg.query(queryString, queryParams, function(err, results){
-          cb(err, results.rows);
-        });
-      };
-
-      Note.findOne = function(params, cb){
-        var queryString = 'SELECT * FROM find_note($1,$2)',
-        queryParams = [params.userId, params.noteId];
-
-        pg.query(queryString, queryParams, function(err, results){
-          cb(err, results.rows);
-        });
-      };
-
-      module.exports = Note;
-
-      // HELPER FUNCTIONS //
-      function uploadPhotoToS3(obj, done){
-        var s3     = new AWS.S3(),
-        ext    = path.extname(obj.stream.hapi.filename),
-        file   = obj.noteId + '_' + obj.photoId + ext,
-        url    = 'https://s3.amazonaws.com/' + process.env.AWS_BUCKET + '/' + file,
-        params = {Bucket: process.env.AWS_BUCKET, Key: file, Body: obj.stream._data, ACL: 'public-read'};
-        s3.putObject(params, function(err){
-          console.log('S3 Error:', err);
-          done(err, url);
-        });
-      }
+  module.exports = Note;
