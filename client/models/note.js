@@ -14,7 +14,7 @@
       return $http.get('/notes?limit=5&offset=' + 5 * page + '&tag=' + tag);
     }
 
-    function findOne(noteId){
+    function show(noteId){
       return $http.get('/notes/' + noteId);
     }
 
@@ -43,6 +43,6 @@
       }
     }
 
-    return {create:create, upload:upload, findOne:findOne, query:query, count:count, nuke:nuke};
+    return {create:create, upload:upload, show:show, query:query, count:count, nuke:nuke};
   }]);
 })();

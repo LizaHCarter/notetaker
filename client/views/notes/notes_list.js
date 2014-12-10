@@ -2,7 +2,7 @@
   'use strict';
 
   angular.module('hapi-auth')
-  .controller('NotesIndexCtrl', ['$scope', '$state', 'Note', function($scope, $state, Note){
+  .controller('NotesListCtrl', ['$scope', '$state', 'Note', function($scope, $state, Note){
     $scope.files = [];
     $scope.count = 0;
     $scope.pages = 0;
